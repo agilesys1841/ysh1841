@@ -1,0 +1,13 @@
+alias vi='/usr/bin/vim'
+
+#
+# Ansible Alias
+#
+alias ans='ansible'
+alias anp='ansible-playbook'
+alias and='ansible-doc'
+alias anpr='ansible-playbook -C'
+alias anpchk='ansible-playbook --syntax-check'
+alias anx='ansible-galaxy'
+alias anv='ansible-vault'
+alias ansfs='ansible localhost -m setup | grep "ansible_*"'
