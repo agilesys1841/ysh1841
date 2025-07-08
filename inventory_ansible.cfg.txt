@@ -1,0 +1,302 @@
+[dev]
+*
+
+[test]
+dd
+
+[prod]
+dx
+
+[webservers:children]
+prod
+
+[defaults]
+inventory = /home/user/inventory
+
+[privilege_escalation]
+become = true
+
+# ansible --version
+
+# ansible all --list-hosts 
+# ansible dev --list-hosts 
+# ansible test --list-hosts 
+# ansible prod --list-hosts 
+# ansible webservers --list-hosts 
+# ansible-config view
+# ansible-galaxy list
+
+# vi /home/admin/ansible/yum_repo.yml
+---
+- name: create yum repository
+  hosts: all
+  tasks:
+  - name: Add multiple repositories into the same file (1/2)
+    ansible.built in.yum_repository:
+      name: EX294_BASE
+      description: EX 294 base software
+      file external_repos
+      baseurl: https://rhgl.domain1.example.com/BaseOS
+      gpgcheck: yes
+      gpgkey: https://rhgls.domain1.example.com/RHEL/RPM-GPG-KEY-redhat-release. enabled: yes
+
+   - name: Add multiple repositories into the same file (2/2)
+     ansible.builtin.yum_repository:
+     name: EX294_STREAM
+     description: EX 294 stream software
+     file external_repos
+     baseurl: https://rhgl.domain1.example.com/AppStream
+     gpgcheck yes
+     gpgcheck yes gpgkey:https://rhgls.domain1.example.com/RHEL/RPM-GPG-KEY-redhat-release enabled: yes
+
+
+
+ansible-galaxy collection install [경로] -p [다운받을경로]
+
+
+
+---
+- name: 1. install packages.
+  hosts: dev
+     - test.
+     - prod
+  become true
+  tasks:
+  - name SETP1-1. install php mariadb
+    yum:
+       name:
+          - php
+          - mariadb-server
+       state latest
+- name: 2. install dev Packages
+  hosts: dev
+  become true
+  tasks:
+  - name STEP2-1. install dev packages
+    yum
+       name: "@RPM Development Tools" state latest
+  - name: STEP2-2. update all Packages yum:
+    yum   
+       name: '*'
+       state latest
+
+ansible-doc yum
+
+
+-6-
+---
+- hosts: all
+  become: true
+  vars:
+      - selinux_policy: targeted
+      - selinux_state: enforcing
+  reles:
+     - rhel-system-roles.selinux
+
+#tasks file for apache name: STEP1. install httpd yum:
+
+---7----
+
+#tasks file for apache 
+---
+- name: STEP1. install httpd 
+  yum:
+   name: httpd
+   state: latest
+
+- name: STEP2. Start service httpd
+  service:
+    name: httpd 
+    enabled: yes
+    state: started
+
+- name STEP3. Start service firewalld 
+  service:
+    name: firewalld
+    enabled: yes
+    state: started
+
+- name: STEP4. Add service firewalld
+  firewalld:
+    service: http
+    state: enabled
+    permanent: yes
+    immediate: yes
+
+- name: Create index.html
+  template:
+  src: index.html.j2
+  dest: /var/www/html/index.html
+
+참고 
+yum / service / firewalld / template
+
+vi ~/ansible/nerrole.yml
+
+---
+- hosts: 
+  become: true
+  roles:
+    - apache
+
+
+
+--------------
+
+---
+- hosts: webservers 
+  become: true 
+  roles:
+     - phpinfo
+- hosts: balancers 
+  become: true 
+  roles:
+     - balancer
+
+------------
+
+
+---
+- hosts: all
+  tasks:
+  - block:
+    - name: Create a logical volume of 1500m
+      lvol:
+        vg: research
+        lv: data
+        size: 1500m
+    - name: Create a ext4
+      filesystem:
+        fstype: ext4
+        dev: /dev/research/data
+  rescue:
+    - debug:
+        msg: Could not create logical volume of that size
+    - name: Create a logical volume of 800m
+      lvol:
+        vg: research
+        lv: data
+        size: 800m
+      when: ansible_lvm.vgs.research is defined
+      ignore_errors: yes
+  - debug:
+      msg: Volume group done not exist
+      when: ansible_lvm.vgs.research is undefined
+
+----------------------------
+
+---
+- hosts: dev 
+  become: true 
+  tasks:
+  - name: template hosts file
+    template:
+       src: hosts.j2
+       dest: /etc/myhosts
+    when: ansible_hostsname in groups ['dev']
+
+-----------------------
+---
+- name: all 
+  hosts: all tasks:
+  - name: Copy using Development
+    copy:
+       content: 'Development'
+       dest: /etc/issue
+    when: "inventory_hostname in groups.dev"
+
+   - name: Copy using Test
+     copy:
+        content: 'Test'
+        dest: /etc/issue
+       when: "inventory_hostname in groups.test"
+
+- name: Copy using Production
+  copy:
+     content: Production
+     dest: /etc/issue
+  when: "inventory_hostname in groups.prod"
+
+ansible all -m shell -a 'cat /etc/issue'
+-------------------------------
+
+---
+- name: webcontent 
+  hosts: dev 
+  tasks:
+  - name: Create a directory
+    file:
+      path: /webdev
+      state: directory
+      group: webdev
+      mode: '2775'
+  - name: Create a symbolic link.
+    file:
+      src: /webdev
+      dest: /var/www/html/webdev
+      state: link
+  - name: Copy using Content
+    copy:
+       content: 'Development'
+       dest: /webdev/index.html
+       setype: httpd_sys_content_t
+
+curl http://IP/webdev/
+--------------------------------------
+
+---
+- name: Make hwreport 
+  hosts: all 
+  vars:
+   hw_all:
+   - hw_name: HOST
+     hw_cont: "{{ inventory_hostname | default('NONE', true) }}" 
+   - hw_name: MEMORY
+     hw_cont: "{{ ansible_memtotal_mb | default('NONE', true) }}" 
+   - hw_name: HOST
+     hw_cont: "{{ ansible_bios_version I default('NONE', true) }}" 
+   - hw_name: HOST
+     hw_cont: "{{ ansible_devices.vda.size | default('NONE', true) }}" 
+   - hw_name: HOST
+     hw_cont: "{{ ansible_devices.vda.size | default('NONE', true) }}"
+ tasks:
+ - name: download hwreport
+   get_url:
+   url: http://rhgls.domain1.example.com/materials/hwreport.empty 
+   dest: /root/hwreport.txt
+ - name: hwreport
+   lineinfile:
+     path: /root/hwreport.txt
+     regexp: '^{{item.hw_name}}='
+     line: "{{item.hw_name}}={{ item.hw_cont }}"
+   loop: "{{ hw_all }}"
+
+ansbile all -m shell -a 'cat /root/hwreport.txt
+
+
+-------------------
+
+yml
+
+pw_developer: lmadev
+pw_manager: lmamgr
+
+---------------------
+
+cd [경로]
+wget http://~
+ansible-vault rekey --ask-vault-pass salaries.yml
+
+-----------------------
+
+
+---
+- name: cron
+  hosts: all
+  tasks:
+  - name: add cron
+    cron:
+     name: add cron natasha
+     minute: "*/2"
+     user: natasha
+     job: logger "EX294 in progress"
